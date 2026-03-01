@@ -153,7 +153,17 @@ st.subheader("📈 Individual Sensor Trends")
 def single_trend(df, x, y, title):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df[x], y=df[y], mode="lines", name=title))
-    fig.update_layout(title=title, xaxis_title="Time", yaxis_title=title)
+
+    ymin = df[y].min()
+    ymax = df[y].max()
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Time",
+        yaxis_title=title,
+        yaxis=dict(range=[ymin * 0.98, ymax * 1.02])
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
 # Core Metrics Trends
