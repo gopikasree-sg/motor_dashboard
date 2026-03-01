@@ -12,7 +12,7 @@ st_autorefresh(interval=10000, key="refresh")
 st.title("🏭 Industrial Motor Predictive Maintenance Dashboard")
 
 # ===============================
-# ENTER YOUR THINGSPEAK DETAILS
+# THINGSPEAK DETAILS
 # ===============================
 CHANNEL1_ID = "3271158"
 CHANNEL1_READ = "R4ZU1JPB7EJRDB67"
@@ -21,7 +21,7 @@ CHANNEL2_ID = "3273029"
 CHANNEL2_READ = "C1EDD2ZGBMKAJY52"
 
 # ===============================
-# FETCH CHANNEL 1 (RAW SENSOR)
+# FETCH CHANNEL 1 (CORE METRICS)
 # ===============================
 url1 = f"https://api.thingspeak.com/channels/{CHANNEL1_ID}/feeds.json?api_key={CHANNEL1_READ}&results=100"
 data1 = requests.get(url1).json()
@@ -58,9 +58,15 @@ current = latest1["field3"]
 voltage = latest1["field4"]
 
 health = latest2["field1"]
-rul = latest2["field2"]
-oee = latest2["field3"]
-severity = int(latest2["field4"])
+degradation = latest2["field2"]
+anomaly_flag = latest2["field3"]
+predictive_health = latest2["field4"]
+oee = latest2["field5"]
+rul = latest2["field6"]
+power_kw = latest2["field7"]
+anomaly_score = latest2["field8"]
+
+severity = int(anomaly_flag)
 
 # ===============================
 # FAULT & RECOMMENDATION ENGINE
@@ -105,9 +111,9 @@ else:
     st.success("🟢 MOTOR RUNNING NORMALLY")
 
 # ===============================
-# SENSOR PANEL
+# LIVE METRICS PANEL
 # ===============================
-st.subheader("📡 Live Sensor Monitoring")
+st.subheader("📡 Core Operational Metrics")
 
 c1,c2,c3,c4 = st.columns(4)
 c1.metric("Vibration (mm/s)", vibration)
@@ -115,15 +121,13 @@ c2.metric("Temperature (°C)", temperature)
 c3.metric("Current (A)", current)
 c4.metric("Voltage (V)", voltage)
 
-# ===============================
-# PERFORMANCE PANEL
-# ===============================
-st.subheader("📊 Predictive Indicators")
+st.subheader("📊 Analytics Layer")
 
-p1,p2,p3 = st.columns(3)
-p1.metric("Health %", health)
-p2.metric("Remaining Useful Life (hrs)", rul)
-p3.metric("OEE %", oee)
+p1,p2,p3,p4 = st.columns(4)
+p1.metric("Health Index", health)
+p2.metric("OEE %", oee)
+p3.metric("RUL (hrs)", rul)
+p4.metric("Anomaly Score", anomaly_score)
 
 # ===============================
 # FAULT PANEL
@@ -142,26 +146,31 @@ with f2:
     st.write(recommendation)
 
 # ===============================
-# SENSOR TRENDS
+# INDIVIDUAL TREND CHARTS
 # ===============================
-st.subheader("📈 Sensor Trends")
+st.subheader("📈 Individual Sensor Trends")
 
-fig1 = go.Figure()
-fig1.add_trace(go.Scatter(x=df1["created_at"], y=df1["field1"], mode="lines", name="Vibration"))
-fig1.add_trace(go.Scatter(x=df1["created_at"], y=df1["field2"], mode="lines", name="Temperature"))
-fig1.add_trace(go.Scatter(x=df1["created_at"], y=df1["field3"], mode="lines", name="Current"))
-fig1.add_trace(go.Scatter(x=df1["created_at"], y=df1["field4"], mode="lines", name="Voltage"))
+def single_trend(df, x, y, title):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df[x], y=df[y], mode="lines", name=title))
+    fig.update_layout(title=title, xaxis_title="Time", yaxis_title=title)
+    st.plotly_chart(fig, use_container_width=True)
 
-st.plotly_chart(fig1, use_container_width=True)
+# Core Metrics Trends
+single_trend(df1, "created_at", "field1", "Dynamic Vibration Signal")
+single_trend(df1, "created_at", "field2", "Temperature")
+single_trend(df1, "created_at", "field3", "Phase Load Current (A)")
+single_trend(df1, "created_at", "field4", "Supply Integrity Voltage")
+single_trend(df1, "created_at", "field5", "Rotational Drive Speed")
+single_trend(df1, "created_at", "field7", "Real-Time Power Draw")
+single_trend(df1, "created_at", "field8", "Motor Utilization Ratio")
 
-# ===============================
-# PERFORMANCE TRENDS
-# ===============================
-st.subheader("📈 Performance Trends")
+# Analytics Trends
+st.subheader("📈 Predictive & Performance Trends")
 
-fig2 = go.Figure()
-fig2.add_trace(go.Scatter(x=df2["created_at"], y=df2["field1"], mode="lines", name="Health"))
-fig2.add_trace(go.Scatter(x=df2["created_at"], y=df2["field2"], mode="lines", name="RUL"))
-fig2.add_trace(go.Scatter(x=df2["created_at"], y=df2["field3"], mode="lines", name="OEE"))
-
-st.plotly_chart(fig2, use_container_width=True)
+single_trend(df2, "created_at", "field1", "Health Index")
+single_trend(df2, "created_at", "field2", "Degradation Rate")
+single_trend(df2, "created_at", "field4", "Predictive Health")
+single_trend(df2, "created_at", "field5", "OEE (%)")
+single_trend(df2, "created_at", "field6", "Remaining Useful Life")
+single_trend(df2, "created_at", "field8", "Anomaly Score")
