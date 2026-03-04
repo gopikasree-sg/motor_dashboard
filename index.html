@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Industrial Motor SCADA</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-gauge"></script>
+
+<meta http-equiv="refresh" content="15">
+
+<style>
+body {
+    background:#0b0f1a;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+h1 {
+    color:#00ffcc;
+}
+.container {
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:20px;
+    padding:20px;
+}
+.card {
+    background:#1c2333;
+    padding:15px;
+    border-radius:12px;
+}
+.blink {
+    animation: blink 1s infinite;
+}
+@keyframes blink {
+    50% { opacity:0.3; }
+}
+button {
+    padding:10px 20px;
+    background:#00ffcc;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<h1>75kW Motor Industrial SCADA</h1>
+<img src="/static/motor.png" width="120">
+
+<br><br>
+<a href="/download"><button>Download Last 1 Hour CSV</button></a>
+
+<div class="container">
+
+<div class="card">
+<canvas id="healthGauge"></canvas>
+</div>
+
+<div class="card">
+<canvas id="rulGauge"></canvas>
+</div>
+
+<div class="card">
+<canvas id="oeeGauge"></canvas>
+</div>
+
+<div class="card">
+<canvas id="vibrationChart"></canvas>
+</div>
+
+<div class="card">
+<canvas id="temperatureChart"></canvas>
+</div>
+
+<div class="card">
+<h3>Fault Status</h3>
+<p id="faultText">{{ analytics[-1].status }}</p>
+</div>
+
+</div>
+
+<script>
+let mechanical = {{ mechanical|tojson }};
+let analytics = {{ analytics|tojson }};
+
+let labels = mechanical.map(item => item.created_at);
+
+function extract(data, field){
+    return data.map(item => item[field]);
+}
+
+let latestHealth = analytics[analytics.length-1].field1;
+let latestRUL = analytics[analytics.length-1].field2;
+let latestOEE = analytics[analytics.length-1].field5;
+let severity = analytics[analytics.length-1].field8;
+
+if(severity >= 4){
+    document.getElementById("faultText").classList.add("blink");
+    let audio = new Audio("https://www.soundjay.com/button/beep-07.wav");
+    audio.play();
+}
+
+new Chart(document.getElementById("healthGauge"), {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [latestHealth, 100-latestHealth],
+            backgroundColor: ["#00ff00", "#222"]
+        }]
+    },
+    options: { cutout: '80%', plugins:{legend:{display:false}},
+    title:{display:true,text:"Health %"} }
+});
+
+new Chart(document.getElementById("rulGauge"), {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [latestRUL, 100-latestRUL],
+            backgroundColor: ["#00ffff", "#222"]
+        }]
+    },
+    options: { cutout: '80%', plugins:{legend:{display:false}},
+    title:{display:true,text:"RUL %"} }
+});
+
+new Chart(document.getElementById("oeeGauge"), {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [latestOEE, 100-latestOEE],
+            backgroundColor: ["#ff00ff", "#222"]
+        }]
+    },
+    options: { cutout: '80%', plugins:{legend:{display:false}},
+    title:{display:true,text:"OEE %"} }
+});
+
+new Chart(document.getElementById("vibrationChart"), {
+type:"line",
+data:{labels:labels,
+datasets:[
+{label:"Vibration",data:extract(mechanical,"field1"),borderColor:"cyan"}
+]}
+});
+
+new Chart(document.getElementById("temperatureChart"), {
+type:"line",
+data:{labels:labels,
+datasets:[
+{label:"Temperature",data:extract(mechanical,"field2"),borderColor:"orange"}
+]}
+});
+</script>
+
+</body>
+</html>
