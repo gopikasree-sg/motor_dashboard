@@ -1,1 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
 
+<title>Motor Predictive Maintenance Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+font-family: Arial;
+background:#0f172a;
+color:white;
+padding:20px;
+}
+
+h1{
+text-align:center;
+margin-bottom:30px;
+}
+
+.card{
+background:#1e293b;
+padding:15px;
+margin:10px;
+border-radius:10px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:15px;
+}
+
+.value{
+font-size:22px;
+font-weight:bold;
+}
+
+.green{color:#00ff88}
+.yellow{color:#ffd000}
+.red{color:#ff3b3b}
+
+canvas{
+background:white;
+border-radius:8px;
+padding:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Industrial Motor SCADA Dashboard</h1>
+
+<div class="grid">
+
+<div class="card">
+Electrical Health
+<div class="value" id="electrical_status">Loading...</div>
+</div>
+
+<div class="card">
+Mechanical Health
+<div class="value" id="mechanical_status">Loading...</div>
+</div>
+
+<div class="card">
+Motor Health Index
+<div class="value" id="health_index">Loading...</div>
+</div>
+
+<div class="card">
+Fault Type
+<div class="value" id="fault_type">Loading...</div>
+</div>
+
+<div class="card">
+Fault Location
+<div class="value" id="fault_location">Loading...</div>
+</div>
+
+<div class="card">
+Recommended Action
+<div class="value" id="action">Loading...</div>
+</div>
+
+</div>
+
+<h2>Electrical Parameters</h2>
+
+<canvas id="currentA"></canvas>
+<canvas id="currentB"></canvas>
+<canvas id="currentC"></canvas>
+<canvas id="voltageA"></canvas>
+<canvas id="voltageB"></canvas>
+<canvas id="voltageC"></canvas>
+
+<h2>Mechanical Parameters</h2>
+
+<canvas id="vibration"></canvas>
+<canvas id="temperature"></canvas>
+<canvas id="power"></canvas>
+<canvas id="load"></canvas>
+<canvas id="rpm"></canvas>
+
+<h2>Analytics</h2>
+
+<canvas id="health"></canvas>
+<canvas id="rul"></canvas>
+<canvas id="oee"></canvas>
+<canvas id="degradation"></canvas>
+
+<br><br>
+
+<a href="/download">
+<button style="padding:10px 20px;font-size:16px">
+Download Last 1 Hour CSV
+</button>
+</a>
+
+<script>
+
+async function loadData(){
+
+const electrical = await fetch("/electrical").then(r=>r.json())
+const mechanical = await fetch("/mechanical").then(r=>r.json())
+const analytics = await fetch("/analytics").then(r=>r.json())
+
+const e = electrical[electrical.length-1]
+const m = mechanical[mechanical.length-1]
+const a = analytics[analytics.length-1]
+
+document.getElementById("health_index").innerHTML=a.field1+" %"
+
+let fault="Normal"
+let location="Healthy"
+let action="No Action Required"
+
+let vibration=parseFloat(m.field1)
+let temp=parseFloat(m.field2)
+let currentA=parseFloat(e.field1)
+
+if(vibration>8){
+fault="High Vibration"
+location="Motor Bearing"
+action="Inspect bearing lubrication"
+}
+
+if(temp>80){
+fault="Over Temperature"
+location="Motor Winding"
+action="Check cooling system"
+}
+
+if(currentA>30){
+fault="Over Current"
+location="Motor Stator"
+action="Inspect load condition"
+}
+
+document.getElementById("fault_type").innerHTML=fault
+document.getElementById("fault_location").innerHTML=location
+document.getElementById("action").innerHTML=action
+
+function makeChart(id,data,label){
+
+new Chart(document.getElementById(id),{
+
+type:'line',
+
+data:{
+labels:data.map(x=>x.created_at),
+datasets:[{
+label:label,
+data:data.map(x=>parseFloat(x)),
+borderWidth:2
+}]
+}
+
+})
+
+}
+
+makeChart("currentA",electrical.map(x=>x.field1),"Current A")
+makeChart("currentB",electrical.map(x=>x.field2),"Current B")
+makeChart("currentC",electrical.map(x=>x.field3),"Current C")
+
+makeChart("voltageA",electrical.map(x=>x.field4),"Voltage A")
+makeChart("voltageB",electrical.map(x=>x.field5),"Voltage B")
+makeChart("voltageC",electrical.map(x=>x.field6),"Voltage C")
+
+makeChart("vibration",mechanical.map(x=>x.field1),"Vibration")
+makeChart("temperature",mechanical.map(x=>x.field2),"Temperature")
+makeChart("power",mechanical.map(x=>x.field3),"Power")
+makeChart("load",mechanical.map(x=>x.field4),"Load")
+makeChart("rpm",mechanical.map(x=>x.field5),"RPM")
+
+makeChart("health",analytics.map(x=>x.field1),"Health Index")
+makeChart("rul",analytics.map(x=>x.field2),"Remaining Useful Life")
+makeChart("oee",analytics.map(x=>x.field5),"OEE")
+makeChart("degradation",analytics.map(x=>x.field6),"Degradation Rate")
+
+}
+
+loadData()
+
+</script>
+
+</body>
+</html>
